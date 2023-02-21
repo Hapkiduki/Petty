@@ -7,29 +7,57 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.hapkiduki.petty.data.repository.CatsRepository
-import com.hapkiduki.petty.model.CatBreed
-import com.hapkiduki.petty.util.Result
+import com.hapkiduki.data.repository.CatsRepository
+import com.hapkiduki.common.Result
+import com.hapkiduki.data.repository.DogsRepository
+import com.hapkiduki.model.CatBreed
+import com.hapkiduki.model.DogBreed
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
-    private val catsRepository: CatsRepository
+    private val catsRepository: CatsRepository,
+    private val dogsRepository: DogsRepository
 ) : ViewModel() {
+
+    var perrosActivos by mutableStateOf(false)
+        private set
 
     var loading by mutableStateOf(false)
         private set
 
-    var razas = mutableStateListOf<CatBreed>()
+    var gatos = mutableStateListOf<CatBreed>()
         private set
 
-    init {
-        getCatsBreeds()
+    var perros = mutableStateListOf<DogBreed>()
+        private set
+
+    fun getDogsBreeds() {
+        perrosActivos = true
+        loading = true
+        viewModelScope.launch {
+            dogsRepository.getBreeds().also { result ->
+                when(result) {
+                    is Result.Error -> {
+                        loading = false
+                        Log.i("Datos", "getDogsBreeds: Error papa ${result.exception}")
+                    }
+                    Result.Loading -> loading = true
+                    is Result.Success -> {
+                        loading = false
+                        Log.i("Datos", "getDogsBreeds: ${result.data.toString()}")
+                        perros.addAll(result.data)
+                    }
+                }
+            }
+        }
     }
 
     fun getCatsBreeds() {
+        perrosActivos = false
+        loading = true
         viewModelScope.launch {
             catsRepository.getBreeds().also { result ->
                 when (result) {
@@ -39,8 +67,9 @@ class MainViewModel @Inject constructor(
                     }
                     Result.Loading -> loading = true
                     is Result.Success -> {
+                        loading = false
                         Log.i("Datos", "getCatsBreeds: ${result.data.toString()}")
-                        razas.addAll(result.data)
+                        gatos.addAll(result.data)
                     }
                 }
             }
